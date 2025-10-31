@@ -144,7 +144,7 @@ class Slider(Widget):
         sfh = win_h / self.base_h
         sf = min(sfw, sfh)
 
-        # масштабируем длину дорожки
+        #resize the length
         scaled_length = self.length * sf
         track_x = int(self.base_x * sfw)
         track_y = int(self.base_y * sfh)
@@ -153,7 +153,7 @@ class Slider(Widget):
         x_min = track_x - knob_radius
         x_max = track_x + int(scaled_length) - knob_radius
 
-        # позиция по value
+        #position of the ball
         t = (self.value - self.min_val) / (self.max_val - self.min_val)
         new_x = int(x_min + t * (x_max - x_min))
 
@@ -166,7 +166,7 @@ class Slider(Widget):
         self.update_knob_position()
 
     def handle_event(self, event, surface):
-        """Обрабатывает нажатия и движение мыши."""
+        """Handles clicks with the mouse"""
         window_size = surface.get_size()
         self.resize(window_size)
         pos = pygame.mouse.get_pos()
@@ -200,16 +200,15 @@ class Slider(Widget):
             self._rect.x = new_x - self._rect.width // 2
 
     def draw(self, surface):
-        """Отрисовывает шарик-ползунок."""
+        """Draws the slider ball"""
         super().draw(surface)
-        # можно добавить линию, если нужно — пока только шарик
 
 # ----------------------------
 # Base Page
 # ----------------------------
 class Page:
     def __init__(self, image, base_w, base_h, scale=1):
-        self.base_img = image         # background surface (loaded via load_image)
+        self.base_img = image
         self.base_w = base_w
         self.base_h = base_h
         self.scale = scale
@@ -242,6 +241,89 @@ class Page:
             self.on_resize(window_size)
         surface.blit(self._bg_scaled, (0, 0))
 
+    def change_theme(self, theme_index, refresh=True):
+        """Загружает новый набор ассетов и обновляет страницы."""
+        global bg, title_img, authors_img, menu_img
+        global spl_img, spl_hov_img, mpl_img, mpl_hov_img, set_img, set_hov_img, quit_img, quit_hov_img
+        global deco, name_img, volume_img, theme_img
+        global col1_img, col2_img, col3_img, col4_img, col5_img
+        global slider_img, main_img, main_hov_img, lead_img, lead_hov_img, back_img, back_hov_img
+        global menu_page, settings_page, leaderboard_page, map_choice_page, singleplayer_page
+        global random, draw, choice, draw_img, draw_hov_img, rand_img, rand_hov_img
+        global game_img, bonuses
+
+        menu_path = f"Assets/Menu{theme_index}"
+        set_path = f"Assets/Settings{theme_index}"
+        map_path = f"Assets/Map{theme_index}"
+
+        # Меню
+        # title_img = load_image("Assets/Menu1/Title.png")
+        # authors_img = load_image("Assets/Menu1/Authors.png")
+        menu_img = load_image(f"{menu_path}/Menu.png")
+        spl_img = load_image(f"{menu_path}/Buttons/Spl_img.png")
+        spl_hov_img = load_image(f"{menu_path}/Buttons/Spl_hov_img.png")
+        mpl_img = load_image(f"{menu_path}/Buttons/Mpl_img.png")
+        mpl_hov_img = load_image(f"{menu_path}/Buttons/Mpl_hov_img.png")
+        set_img = load_image(f"{menu_path}/Buttons/Set_img.png")
+        set_hov_img = load_image(f"{menu_path}/Buttons/Set_hov_img.png")
+        quit_img = load_image(f"{menu_path}/Buttons/Quit_img.png")
+        quit_hov_img = load_image(f"{menu_path}/Buttons/Quit_hov_img.png")
+
+        # Настройки
+        # deco = load_image("Assets/Settings1/Deco.png")
+        # name_img = load_image("Assets/Settings1/Name.png")
+        # volume_img = load_image("Assets/Settings1/Volume.png")
+        # theme_img = load_image("Assets/Settings1/Theme.png")
+
+        # col1_img = load_image("Assets/Settings1/Buttons/Col1_img.png")
+        # col2_img = load_image("Assets/Settings1/Buttons/Col2_img.png")
+        # col3_img = load_image("Assets/Settings1/Buttons/Col3_img.png")
+        # col4_img = load_image("Assets/Settings1/Buttons/Col4_img.png")
+        # col5_img = load_image("Assets/Settings1/Buttons/Col5_img.png")
+        # slider_img = load_image("Assets/Settings1/Buttons/Slider_img.png")
+
+        bg = load_image(f"Assets/Bg{theme_index}.png")
+
+        main_img = load_image(f"{set_path}/Buttons/Main_img.png")
+        main_hov_img = load_image(f"{set_path}/Buttons/Main_hov_img.png")
+        lead_img = load_image(f"{set_path}/Buttons/Lead_img.png")
+        lead_hov_img = load_image(f"{set_path}/Buttons/Lead_hov_img.png")
+        back_img = load_image(f"{set_path}/Buttons/Back_img.png")
+        back_hov_img = load_image(f"{set_path}/Buttons/Back_hov_img.png")
+
+        #Выбор карты
+        # random = load_image(f"Assets/Map1/Random.png")
+        # draw = load_image(f"Assets/Map1/Draw.png")
+        choice = load_image(f"{map_path}/Choice.png")
+        # draw_img = load_image(f"Assets/Map1/Buttons/Draw_img.png")
+        # draw_hov_img = load_image(f"Assets/Map1/Buttons/Draw_hov_img.png")
+        # rand_img = load_image(f"Assets/Map1/Buttons/Rand_img.png")
+        # rand_hov_img = load_image(f"Assets/Map1/Buttons/Rand_hov_img.png")
+
+        #Синглплеер
+        game_img = load_image(f"{map_path}/Game_img.png")
+        bonuses = load_image(f"{map_path}/Bonuses.png")
+
+        # Обновление страниц
+        menu_page = Menu(bg, BASE_WIDTH, BASE_HEIGHT)
+        leaderboard_page = Leaderboard(bg, BASE_WIDTH, BASE_HEIGHT)
+        map_choice_page = MapChoice(bg, BASE_WIDTH, BASE_HEIGHT)
+        singleplayer_page = Singleplayer(bg, BASE_WIDTH, BASE_HEIGHT)
+
+        new_settings_page = Settings(bg, BASE_WIDTH, BASE_HEIGHT)
+
+        if isinstance(self, Settings):
+            self.__dict__.update(new_settings_page.__dict__)
+            settings_page = self
+        else:
+            settings_page = new_settings_page
+
+        if refresh:
+            self.base_img = bg
+            self._bg_scaled = None
+            self.on_resize(pygame.display.get_surface().get_size())
+            self.draw(pygame.display.get_surface())
+            pygame.display.flip()
 
 # ----------------------------
 # Menu1 Page
@@ -288,7 +370,7 @@ class Menu(Page):
             self.authors_widget.draw(surface)
 
             if self.spl_but.draw(surface):
-                return "single_player"
+                return "map_choice"
             if self.mpl_but.draw(surface):
                 return "multi_player"
             if self.set_but.draw(surface):
@@ -329,74 +411,6 @@ class Settings(Page):
             self.col1, self.col2, self.col3, self.col4, self.col5, self.slider,
             self.main_but, self.lead_but, self.back_but
         ]
-
-    def change_theme(self, theme_index):
-        global bg, title_img, authors_img, menu_img
-        global spl_img, spl_hov_img, mpl_img, mpl_hov_img, set_img, set_hov_img, quit_img, quit_hov_img
-        global deco, name_img, volume_img, theme_img
-        global col1_img, col2_img, col3_img, col4_img, col5_img
-        global slider_img, main_img, main_hov_img, lead_img, lead_hov_img, back_img, back_hov_img
-        global menu_page, settings_page, leaderboard_page
-
-        menu_path = f"Assets/Menu{theme_index}"
-        set_path = f"Assets/Settings{theme_index}"
-
-        title_img = load_image("Assets/Menu1/Title.png")
-        authors_img = load_image("Assets/Menu1/Authors.png")
-        menu_img = load_image(f"{menu_path}/Menu.png")
-        spl_img = load_image(f"{menu_path}/Buttons/Spl_img.png")
-        spl_hov_img = load_image(f"{menu_path}/Buttons/Spl_hov_img.png")
-        mpl_img = load_image(f"{menu_path}/Buttons/Mpl_img.png")
-        mpl_hov_img = load_image(f"{menu_path}/Buttons/Mpl_hov_img.png")
-        set_img = load_image(f"{menu_path}/Buttons/Set_img.png")
-        set_hov_img = load_image(f"{menu_path}/Buttons/Set_hov_img.png")
-        quit_img = load_image(f"{menu_path}/Buttons/Quit_img.png")
-        quit_hov_img = load_image(f"{menu_path}/Buttons/Quit_hov_img.png")
-
-        deco = load_image("Assets/Settings1/Deco.png")
-        name_img = load_image("Assets/Settings1/Name.png")
-        volume_img = load_image("Assets/Settings1/Volume.png")
-        theme_img = load_image("Assets/Settings1/Theme.png")
-
-        col1_img = load_image("Assets/Settings1/Buttons/Col1_img.png")
-        col2_img = load_image("Assets/Settings1/Buttons/Col2_img.png")
-        col3_img = load_image("Assets/Settings1/Buttons/Col3_img.png")
-        col4_img = load_image("Assets/Settings1/Buttons/Col4_img.png")
-        col5_img = load_image("Assets/Settings1/Buttons/Col5_img.png")
-        slider_img = load_image("Assets/Settings1/Buttons/Slider_img.png")
-
-        bg = load_image(f"Assets/Bg{theme_index}.png")
-
-        main_img = load_image(f"{set_path}/Buttons/Main_img.png")
-        main_hov_img = load_image(f"{set_path}/Buttons/Main_hov_img.png")
-        lead_img = load_image(f"{set_path}/Buttons/Lead_img.png")
-        lead_hov_img = load_image(f"{set_path}/Buttons/Lead_hov_img.png")
-        back_img = load_image(f"{set_path}/Buttons/Back_img.png")
-        back_hov_img = load_image(f"{set_path}/Buttons/Back_hov_img.png")
-
-        # обновляем фон текущей страницы
-        self.base_img = bg
-        self._bg_scaled = None  # сбросим кеш, чтобы перерисовать фон
-
-        # пересоздаём все элементы
-
-        self.main_but = Button(434, 53, main_img, main_hov_img, BASE_WIDTH, BASE_HEIGHT)
-        self.lead_but = Button(1010, 53, lead_img, lead_hov_img, BASE_WIDTH, BASE_HEIGHT)
-        self.back_but = Button(1350, 913, back_img, back_hov_img, BASE_WIDTH, BASE_HEIGHT)
-
-        self.widgets = [
-            self.deco1, self.deco2, self.name, self.volume, self.theme,
-            self.col1, self.col2, self.col3, self.col4, self.col5,
-            self.slider, self.main_but, self.lead_but, self.back_but
-        ]
-
-        # пересчёт размеров под текущее окно
-        self.on_resize(pygame.display.get_surface().get_size())
-
-        # --- пересоздаём страницы с новыми картинками ---
-        menu_page = Menu(bg, BASE_WIDTH, BASE_HEIGHT)
-        settings_page = Settings(bg, BASE_WIDTH, BASE_HEIGHT)
-        leaderboard_page = Leaderboard(bg, BASE_WIDTH, BASE_HEIGHT)
 
 
     def run(self, surface):
@@ -491,14 +505,87 @@ class Leaderboard(Page):
             clock.tick(60)
 
 
+class MapChoice(Page):
+    def __init__(self, image, base_w, base_h):
+        super().__init__(image, base_w, base_h)
+        self.choice_sel = Widget(470, 153, choice, BASE_WIDTH, BASE_HEIGHT)
+        self.rand_text = Widget(605, 855, random, BASE_WIDTH, BASE_HEIGHT)
+        self.draw_text = Widget(1157, 855, draw, BASE_WIDTH, BASE_HEIGHT)
+        self.rand_but = Button(536, 428, rand_img, rand_hov_img, BASE_WIDTH, BASE_HEIGHT)
+        self.draw_but = Button(1044, 428, draw_img, draw_hov_img, BASE_WIDTH, BASE_HEIGHT)
 
+    def run(self, surface):
+        clock = pygame.time.Clock()
+        self.on_resize(surface.get_size())
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.VIDEORESIZE:
+                    surface = pygame.display.set_mode((event.w, event.h),
+                                                      pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
+                    self.on_resize(surface.get_size())
+
+            self.draw(surface)
+
+            # отрисовка надписей и кнопок
+            self.choice_sel.draw(surface)
+            self.rand_text.draw(surface)
+            self.draw_text.draw(surface)
+
+            if self.rand_but.draw(surface):
+                return "singleplayer"
+            if self.draw_but.draw(surface):
+                pass
+
+            pygame.display.flip()
+            clock.tick(60)
 # ----------------------------
 # Simple Page placeholders
 # ----------------------------
 class Singleplayer(Page):
     def __init__(self, image, base_w, base_h):
         super().__init__(image, base_w, base_h)
+        self.game_bg = Widget(108, 90, game_img, BASE_WIDTH, BASE_HEIGHT)
+        self.bonuses = Widget(1144, 489, bonuses, BASE_WIDTH, BASE_HEIGHT)
+        self.back_but = Button(1350, 913, back_img, back_hov_img, BASE_WIDTH, BASE_HEIGHT)
+        self.score_txt = Widget(1213, 107, score, BASE_WIDTH, BASE_HEIGHT)
+        self.time_txt = Widget(1213, 228, time, BASE_WIDTH, BASE_HEIGHT)
+        self.dif_lvl_txt = Widget(1213, 349, dif_lvl, BASE_WIDTH, BASE_HEIGHT)
 
+        self.widgets = [
+            self.game_bg, self.bonuses, self.score_txt,
+            self.time_txt, self.dif_lvl_txt, self.back_but
+        ]
+
+    def run(self, surface):
+        clock = pygame.time.Clock()
+        self.on_resize(surface.get_size())
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.VIDEORESIZE:
+                    surface = pygame.display.set_mode((event.w, event.h),
+                                                      pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
+                    self.on_resize(surface.get_size())
+
+            self.draw(surface)
+            self.game_bg.draw(surface)
+            self.bonuses.draw(surface)
+            self.score_txt.draw(surface)
+            self.time_txt.draw(surface)
+            self.dif_lvl_txt.draw(surface)
+
+            if self.back_but.draw(surface):
+                return "menu"
+
+            pygame.display.flip()
+            clock.tick(60)
 
 class Multiplayer(Page):
     def __init__(self, image, base_w, base_h):
@@ -512,7 +599,6 @@ pygame.init()
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 BASE_WIDTH, BASE_HEIGHT = 1920, 1080
-# use double buffering + hardware surface if available
 screen = pygame.display.set_mode((BASE_WIDTH // 2, BASE_HEIGHT // 2),
                                  pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
 pygame.display.set_caption('Pacman Remastered')
@@ -553,10 +639,26 @@ lead_hov_img = load_image('Assets/Settings1/Buttons/Lead_hov_img.png')
 back_img = load_image('Assets/Settings1/Buttons/Back_img.png')
 back_hov_img = load_image('Assets/Settings1/Buttons/Back_hov_img.png')
 
+random = load_image(f"Assets/Map1/Random.png")
+draw = load_image(f"Assets/Map1/Draw.png")
+choice = load_image(f"Assets/Map1/Choice.png")
+draw_img = load_image(f"Assets/Map1/Buttons/Draw_img.png")
+draw_hov_img = load_image(f"Assets/Map1/Buttons/Draw_hov_img.png")
+rand_img = load_image(f"Assets/Map1/Buttons/Rand_img.png")
+rand_hov_img = load_image(f"Assets/Map1/Buttons/Rand_hov_img.png")
+
+score = load_image(f"Assets/Map1/Score.png")
+time = load_image(f"Assets/Map1/Time.png")
+dif_lvl = load_image(f"Assets/Map1/Dif_lvl.png")
+game_img = load_image(f"Assets/Map1/Game_img.png")
+bonuses = load_image(f"Assets/Map1/Bonuses.png")
+
 # Create pages
 menu_page = Menu(bg, BASE_WIDTH, BASE_HEIGHT)
 settings_page = Settings(bg, BASE_WIDTH, BASE_HEIGHT)
 leaderboard_page = Leaderboard(bg, BASE_WIDTH, BASE_HEIGHT)
+map_choice_page = MapChoice(bg, BASE_WIDTH, BASE_HEIGHT)
+singleplayer_page = Singleplayer(bg, BASE_WIDTH, BASE_HEIGHT)
 
 current_page = "menu"
 mixer.music.play(loops=-1)
@@ -582,17 +684,16 @@ while not done:
     # draw current page by delegating to its run loop (which also handles resize internally)
     if current_page == "menu":
         current_page = menu_page.run(screen)
-    elif current_page == "single_player":
-        # placeholder: just go back to menu for now
-        current_page = "menu"
+    elif current_page == "map_choice":
+        current_page = map_choice_page.run(screen)
     elif current_page == "multi_player":
         current_page = "menu"
     elif current_page == "settings":
         current_page = settings_page.run(screen)
     elif current_page == "leaderboard":
         current_page = leaderboard_page.run(screen)
-
-    # small sleep is handled by page loops; main loop mainly dispatches to page.run
+    elif current_page == "singleplayer":
+        current_page = singleplayer_page.run(screen)
 
 pygame.quit()
 sys.exit()
