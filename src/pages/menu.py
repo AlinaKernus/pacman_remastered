@@ -48,7 +48,7 @@ class Menu(Page):
             self.authors_widget.draw(surface)
 
             if self.spl_but.draw(surface):
-                return "map_choice"
+                return "singleplayer"
             if self.mpl_but.draw(surface):
                 return "multi_player"
             if self.set_but.draw(surface):
