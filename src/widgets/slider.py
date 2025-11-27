@@ -1,5 +1,6 @@
 import pygame
 from src.widgets._base import Widget
+from src.utils.music_manager import music_manager
 
 class Slider(Widget):
     def __init__(self, x, y, img, base_w, base_h, length=300, min_val=0.0, max_val=1.0, scale=1):
@@ -45,7 +46,26 @@ class Slider(Widget):
         pos = pygame.mouse.get_pos()
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect and self.rect.collidepoint(pos):
+            # Проверяем клик на треке слайдера (не только на ползунке)
+            win_w, win_h = window_size
+            sfw = win_w / self.base_w
+            scaled_length = self.length * sfw
+            x_min = int(self.base_x * sfw)
+            x_max = x_min + int(scaled_length)
+            track_y = int(self.base_y * (win_h / self.base_h))
+            track_height = 50  # Примерная высота области клика
+            
+            # Проверяем клик на треке
+            if x_min <= pos[0] <= x_max and track_y - track_height//2 <= pos[1] <= track_y + track_height//2:
+                self.dragging = True
+                # Обновляем значение при клике на треке
+                new_x = max(x_min, min(pos[0], x_max))
+                t = (new_x - x_min) / (x_max - x_min)
+                self.value = self.min_val + t * (self.max_val - self.min_val)
+                # Обновляем громкость через music_manager
+                music_manager.set_music_volume(self.value)
+                self.update_knob_position()
+            elif self.rect and self.rect.collidepoint(pos):
                 self.dragging = True
 
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -67,7 +87,8 @@ class Slider(Widget):
             # нормализуем громкость в диапазон [min_val, max_val]
             t = (new_x - x_min) / (x_max - x_min)
             self.value = self.min_val + t * (self.max_val - self.min_val)
-            pygame.mixer.music.set_volume(self.value ** 2)
+            # Обновляем громкость через music_manager
+            music_manager.set_music_volume(self.value)
 
             # сдвигаем ползунок
             self._rect.x = new_x - self._rect.width // 2

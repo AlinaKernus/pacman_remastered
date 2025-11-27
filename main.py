@@ -3,23 +3,37 @@ import sys
 import os
 from pygame import mixer
 from src.utils.config import Config
+from src.utils.music_manager import music_manager
 
 # initialize pygame
 pygame.init()
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-screen = pygame.display.set_mode((Config.BASE_WIDTH // 2, Config.BASE_HEIGHT // 2),
+# Получаем размеры экрана для окна на весь экран
+screen_info = pygame.display.Info()
+screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h),
                                 pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
 pygame.display.set_caption('Pacman Remastered')
 
 
 if __name__ == "__main__":
+    from src.utils.config import Config
+    
+    # Загружаем настройки ПЕРЕД созданием страниц, чтобы тема применилась
+    Config.load_from_settings()
+    # music_manager уже загрузил настройки в __init__
+    
+    # Теперь импортируем router_manager после загрузки настроек
     from src.utils.router import router_manager
+    
+    # Применяем загруженную тему к страницам (если тема не 1)
+    if Config.CURRENT_THEME != 1:
+        router_manager.settings_page.change_theme(Config.CURRENT_THEME, refresh=False)
 
-    # music
+    # music - используем трек из pac-man-1
     mixer.init()
-    mixer.music.load("Assets/main_music.mp3")
-    mixer.music.set_volume(0.05)
+    mixer.music.load("pac-man-1/Static/Sounds/background.ogg")
+    # Громкость уже установлена из настроек в music_manager
     mixer.music.play(loops=-1)
 
     clock = pygame.time.Clock()

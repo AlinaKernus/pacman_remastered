@@ -53,7 +53,7 @@ class ImageCache:
     score = load_image(f"Assets/Map1/Score.png")
     time = load_image(f"Assets/Map1/Time.png")
     dif_lvl = load_image(f"Assets/Map1/Dif_lvl.png")
-    game_img = load_image(f"Assets/Map1/Game_img.png")
+    game_img = load_image(f"Assets/Map1/Game_img_new.png")
     bonuses = load_image(f"Assets/Map1/Bonuses.png")
 
 

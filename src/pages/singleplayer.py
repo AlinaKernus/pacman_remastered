@@ -10,27 +10,36 @@ from src.utils.config import Config
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ASSETS_DIR = os.path.join(BASE_DIR, "Assets")
 FONT_PATH = os.path.join(ASSETS_DIR, "fonts", "Jersey_10", "Jersey10-Regular.ttf")
+PACMAN1_DIR = os.path.join(BASE_DIR, "pac-man-1")
 
-# Импортируем функции игры
-sys.path.insert(0, BASE_DIR)
-from pacman_game import run_game_loop, start_new_game, get_score, get_lives
+# Импортируем игру из pac-man-1
+# Временно меняем рабочую директорию для правильных путей к ресурсам
+old_cwd = os.getcwd()
+sys.path.insert(0, PACMAN1_DIR)
+os.chdir(PACMAN1_DIR)
+from GameScene import GameScene
+os.chdir(old_cwd)
+
+# Импортируем music_manager для управления звуками
+from src.utils.music_manager import music_manager
 
 class Singleplayer(Page):
     def __init__(self, image, base_w, base_h):
         super().__init__(image, base_w, base_h)
         self.game_bg = Widget(108, 90, image_cache_manager.game_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
-        self.bonuses = Widget(1144, 525, image_cache_manager.bonuses, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.back_but = Button(1350, 913, image_cache_manager.back_img, image_cache_manager.back_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
 
         self.widgets = [
-            self.game_bg, self.bonuses, self.back_but
+            self.game_bg, self.back_but
         ]
         
-        # Инициализация игры
+        # Инициализация игры из pac-man-1
         self.game_initialized = False
+        self.game_scene = None  # GameScene из pac-man-1
         self.game_surface = None  # Surface для отрисовки игры
         self.game_rect = None  # Позиция и размер для отрисовки игры на экране
         self._last_window_size = None  # Для отслеживания изменений размера окна
+        self._original_music_volume = None  # Сохраняем оригинальную громкость музыки
         
         # Таймер игры
         self.game_start_time = None
@@ -38,17 +47,20 @@ class Singleplayer(Page):
         self.font_size_base = 64
         self.font = None  # Будет инициализирован при первом запуске
         self.font_path = FONT_PATH if os.path.isfile(FONT_PATH) else None
+        # Позиции центрированы по вертикали (высота экрана 1080, размещаем от 300 до 800)
         self.label_positions = {
-            "score": (1213, 125),
-            "time": (1213, 225),
-            "lives": (1213, 325),
-            "difficulty": (1213, 425)
+            "score": (1213, 300),
+            "time": (1213, 400),
+            "lives": (1213, 500),
+            "difficulty": (1213, 600),
+            "controls": (1213, 700)
         }
         self.label_texts = {
             "score": "Score",
             "time": "Time",
             "lives": "Lives",
-            "difficulty": "Difficulty"
+            "difficulty": "Difficulty",
+            "controls": "Controls"
         }
 
     def _update_game_position(self, window_size):
@@ -60,15 +72,23 @@ class Singleplayer(Page):
         game_bg_rect = self.game_bg.rect
         
         # Масштабируем surface игры под размер game_bg
-        # Увеличиваем масштаб, чтобы игра заполняла рамку без лишних пространств
+        # GameScene использует screen_map размером 735x813 (увеличенный)
         if game_bg_rect:
-            game_scale_w = game_bg_rect.width / 552
-            game_scale_h = game_bg_rect.height / 552
-            # Используем минимум, чтобы игра влезала, добавляем пространство между рамкой и игрой
-            game_scale = min(game_scale_w, game_scale_h) * 0.94  # 90% для пространства между рамкой и игрой
+            # Используем стандартные размеры GameScene если игра еще не инициализирована
+            if self.game_scene and hasattr(self.game_scene, 'screen_map'):
+                game_original_w = self.game_scene.screen_map.get_width()  # 735
+                game_original_h = self.game_scene.screen_map.get_height()  # 813
+            else:
+                game_original_w = 735  # Стандартный размер screen_map (увеличенный)
+                game_original_h = 813
             
-            scaled_game_w = int(552 * game_scale)
-            scaled_game_h = int(552 * game_scale)
+            game_scale_w = game_bg_rect.width / game_original_w
+            game_scale_h = game_bg_rect.height / game_original_h
+            # Используем минимум, чтобы игра влезала, добавляем пространство между рамкой и игрой
+            game_scale = min(game_scale_w, game_scale_h) * 0.94  # 94% для пространства между рамкой и игрой
+            
+            scaled_game_w = int(game_original_w * game_scale)
+            scaled_game_h = int(game_original_h * game_scale)
             
             # Центрируем игру в game_bg
             game_x = game_bg_rect.x + (game_bg_rect.width - scaled_game_w) // 2
@@ -96,7 +116,12 @@ class Singleplayer(Page):
             font = pygame.font.SysFont('arial', font_size)
 
         # Значения из игры
-        score_value = str(get_score())
+        if self.game_scene:
+            score_value = str(self.game_scene.score)
+            lives_value = str(self.game_scene.lives)
+        else:
+            score_value = "0"
+            lives_value = "0"
 
         if self.game_start_time:
             elapsed_ms = pygame.time.get_ticks() - self.game_start_time
@@ -106,21 +131,22 @@ class Singleplayer(Page):
             time_value = f"{minutes:02d}:{seconds:02d}"
         else:
             time_value = "00:00"
-
-        lives_value = str(get_lives())
         difficulty_value = "1"
 
+        controls_value = "W,A,S,D"
+        
         values = {
             "score": score_value,
             "time": time_value,
             "lives": lives_value,
-            "difficulty": difficulty_value
+            "difficulty": difficulty_value,
+            "controls": controls_value
         }
 
         color = (255, 255, 0)
         spacing = int(80 * scale_w)
 
-        for key in ["score", "time", "lives", "difficulty"]:
+        for key in ["score", "time", "lives", "difficulty", "controls"]:
             base_pos = self.label_positions.get(key)
             if not base_pos:
                 continue
@@ -143,9 +169,34 @@ class Singleplayer(Page):
         
         # Инициализация игры при первом запуске
         if not self.game_initialized:
-            start_new_game()
-            # Размер игры: 552x552 (23*24 x 23*24) - квадратный
-            self.game_surface = pygame.Surface((552, 552))
+            # Сохраняем оригинальную громкость музыки и уменьшаем на 50%
+            if self._original_music_volume is None:
+                self._original_music_volume = music_manager.get_music_volume()
+            # Уменьшаем громкость музыки на 50% для игры
+            reduced_volume = self._original_music_volume * 0.5
+            if not music_manager.is_music_muted():
+                from pygame import mixer
+                mixer.music.set_volume(reduced_volume)
+            
+            # Временно меняем рабочую директорию для инициализации GameScene
+            old_cwd = os.getcwd()
+            os.chdir(PACMAN1_DIR)
+            self.game_scene = GameScene()
+            self.game_scene.username = "Player"  # Можно сделать настраиваемым
+            # Устанавливаем тему из Config
+            self.game_scene.theme_index = Config.CURRENT_THEME
+            # Устанавливаем music_manager для проверки мута звуков
+            self.game_scene.music_manager = music_manager
+            self.game_scene.setup("generated")  # Запускаем сгенерированную карту
+            
+            # Устанавливаем громкость звуков через music_manager
+            # Обновляем громкость всех звуков в GameScene
+            if hasattr(self.game_scene, 'start_sound'):
+                self.game_scene.start_sound.set_volume(music_manager.get_sound_volume())
+            os.chdir(old_cwd)
+            
+            # GameScene создает свой screen размером 1280x720, но нам нужен только игровой экран
+            # Используем screen_map из GameScene (644x713) или весь screen
             self.game_start_time = pygame.time.get_ticks()
             # Инициализируем шрифт для отображения текста
             try:
@@ -179,10 +230,20 @@ class Singleplayer(Page):
             current_window_size = surface.get_size()
             self._update_game_position(current_window_size)
             
-            # Обновляем игру
-            game_state = None
-            if self.game_surface and self.game_rect:
-                game_state = run_game_loop(self.game_surface)
+            # Обновляем игру из pac-man-1
+            if self.game_scene:
+                # Обновляем тему, если она изменилась
+                if self.game_scene.theme_index != Config.CURRENT_THEME:
+                    self.game_scene.theme_index = Config.CURRENT_THEME
+                
+                # Временно меняем рабочую директорию для обновления GameScene
+                old_cwd = os.getcwd()
+                os.chdir(PACMAN1_DIR)
+                user_input = pygame.key.get_pressed()
+                self.game_scene.update(user_input)
+                os.chdir(old_cwd)
+                # Используем screen_map из GameScene для отрисовки игрового поля
+                self.game_surface = self.game_scene.screen_map
             
             # Проверяем состояние игры (game over)
             # Автоматическое перенаправление закомментировано
@@ -215,19 +276,41 @@ class Singleplayer(Page):
                 scaled_game = pygame.transform.smoothscale(self.game_surface, self.game_rect.size)
                 surface.blit(scaled_game, self.game_rect)
             
-            self.bonuses.draw(surface)
             self._draw_hud(surface)
 
             if self.back_but.draw(surface):
+                # Останавливаем все звуки игры перед выходом
+                # Останавливаем все звуковые эффекты pygame.mixer (включая звуки из GameScene)
+                pygame.mixer.stop()
+                # Останавливаем музыку игры если она играет
+                pygame.mixer.music.stop()
+                # Восстанавливаем оригинальную громкость музыки главного меню
+                from pygame import mixer
+                mixer.music.load("pac-man-1/Static/Sounds/background.ogg")
+                if not music_manager.is_music_muted():
+                    # Восстанавливаем оригинальную громкость
+                    if self._original_music_volume is not None:
+                        mixer.music.set_volume(self._original_music_volume)
+                    else:
+                        mixer.music.set_volume(music_manager.get_music_volume())
+                else:
+                    mixer.music.set_volume(0.0)
+                mixer.music.play(loops=-1)
+                
                 # Сбрасываем игру при выходе из страницы
                 self.game_initialized = False
+                self.game_scene = None
                 self.game_surface = None
                 self.game_rect = None
                 self.game_start_time = None
                 self.game_over_start_time = None
                 self._last_window_size = None
-                start_new_game()
+                self._original_music_volume = None  # Сбрасываем сохраненную громкость
                 return "menu"
+            
+            # Отрисовка и обработка иконки звука
+            if self.sound_icon.draw(surface):
+                music_manager.toggle_all_sounds()
 
             pygame.display.flip()
             clock.tick(60)

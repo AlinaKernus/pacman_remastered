@@ -6,6 +6,7 @@ from src.widgets.button import Button
 from src.widgets.slider import Slider
 from src.utils.image import image_cache_manager
 from src.utils.config import Config
+from src.utils.music_manager import music_manager
 
 class Settings(Page):
     def __init__(self, image, base_w, base_h):
@@ -16,7 +17,10 @@ class Settings(Page):
         self.name = Widget(211, 275, image_cache_manager.name_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.volume = Widget(211, 424, image_cache_manager.volume_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.theme = Widget(211, 573, image_cache_manager.theme_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
-        self.slider = Slider(430, 432, image_cache_manager.slider_img, Config.BASE_WIDTH, Config.BASE_HEIGHT, length=290, max_val=0.5)
+        # Слайдер для громкости музыки (0.0 - 1.0)
+        self.slider = Slider(430, 432, image_cache_manager.slider_img, Config.BASE_WIDTH, Config.BASE_HEIGHT, length=290, min_val=0.0, max_val=1.0)
+        # Инициализируем слайдер с текущей громкостью
+        self.slider.value = music_manager.get_music_volume()
 
         self.main_but = Button(434, 53, image_cache_manager.main_img, image_cache_manager.main_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.lead_but = Button(1010, 53, image_cache_manager.lead_img, image_cache_manager.lead_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
@@ -37,6 +41,9 @@ class Settings(Page):
     def run(self, surface):
         clock = pygame.time.Clock()
         self.on_resize(surface.get_size())
+        
+        # Обновляем слайдер с текущей громкостью при входе на страницу
+        self.slider.value = music_manager.get_music_volume()
 
         while True:
             for event in pygame.event.get():
@@ -48,6 +55,9 @@ class Settings(Page):
                     surface = pygame.display.set_mode((event.w, event.h),
                                                      pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
                     self.on_resize(surface.get_size())
+
+            # Обновляем громкость музыки из слайдера
+            music_manager.set_music_volume(self.slider.value)
 
             self.draw(surface)
             # draw widgets
@@ -75,6 +85,13 @@ class Settings(Page):
                 self.change_theme(4)
             if self.col5.draw(surface):
                 self.change_theme(5)
+            
+            # Отрисовка и обработка иконки звука
+            if self.sound_icon.draw(surface):
+                music_manager.toggle_all_sounds()
+                # Обновляем слайдер если музыка была размучена
+                if not music_manager.is_music_muted():
+                    self.slider.value = music_manager.get_music_volume()
 
             pygame.display.flip()
             clock.tick(60)

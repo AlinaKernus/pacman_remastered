@@ -5,6 +5,7 @@ from src.widgets._base import Widget
 from src.widgets.button import Button
 from src.utils.image import image_cache_manager
 from src.utils.config import Config
+from src.utils.music_manager import music_manager
 
 class Menu(Page):
     def __init__(self, image, base_w, base_h):
@@ -56,6 +57,10 @@ class Menu(Page):
             if self.quit_but.draw(surface):
                 pygame.quit()
                 sys.exit()
+            
+            # Отрисовка и обработка иконки звука
+            if self.sound_icon.draw(surface):
+                music_manager.toggle_all_sounds()
 
             pygame.display.flip()
             clock.tick(60)

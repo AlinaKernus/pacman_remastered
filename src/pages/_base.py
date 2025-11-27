@@ -2,6 +2,8 @@ import pygame
 from src.utils.image import load_image
 from src.utils.config import Config
 from src.utils.image import image_cache_manager
+from src.widgets.sound_icon import SoundIcon
+from src.utils.music_manager import music_manager
 
 class Page:
     def __init__(self, image, base_w, base_h, scale=1):
@@ -17,6 +19,9 @@ class Page:
 
         # store widgets in a list in derived pages
         self.widgets = []
+        
+        # Иконка звука для всех страниц
+        self.sound_icon = SoundIcon(base_w, base_h)
 
     def on_resize(self, window_size):
         """Call resize on background and all widgets."""
@@ -30,6 +35,10 @@ class Page:
         # widgets
         for w in self.widgets:
             w.resize(window_size)
+        
+        # Иконка звука
+        if hasattr(self, 'sound_icon'):
+            self.sound_icon.resize(window_size)
 
     def draw(self, surface):
         """Draw background (cached). Widgets draw themselves."""
@@ -40,6 +49,11 @@ class Page:
 
     def change_theme(self, theme_index, refresh=True):
         """Загружает новый набор ассетов и обновляет страницы."""
+        # Сохраняем текущую тему в Config
+        Config.CURRENT_THEME = theme_index
+        # Сохраняем тему в настройках
+        from src.utils.settings_manager import settings_manager
+        settings_manager.set_setting("theme", theme_index)
 
         menu_path = f"Assets/Menu{theme_index}"
         set_path = f"Assets/Settings{theme_index}"
@@ -68,7 +82,7 @@ class Page:
         image_cache_manager.choice = load_image(f"{map_path}/Choice.png")
 
         #Синглплеер
-        image_cache_manager.game_img = load_image(f"{map_path}/Game_img.png")
+        image_cache_manager.game_img = load_image(f"{map_path}/Game_img_new.png")
         image_cache_manager.bonuses = load_image(f"{map_path}/Bonuses.png")
 
         # Обновление страниц
