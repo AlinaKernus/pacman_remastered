@@ -4,11 +4,20 @@ from Variables import *
 
 
 class Ghost:
-    def __init__(self, name, screen_width, map, position, cell_width):
+    def __init__(self, name, screen_width, map, position, cell_width, difficulty=1):
         self.screen = pygame.Surface((screen_width, screen_width), pygame.SRCALPHA)
         self.map = map
         self.direction_movement = 'U'
-        self.speed = 1.88
+        self.difficulty = difficulty
+        
+        if difficulty <= 3:
+            self.base_speed = 1.5
+        elif difficulty <= 6:
+            self.base_speed = 1.75
+        else:
+            self.base_speed = 2.0
+
+        self.speed = self.base_speed
         self.pos_x = position[1] #j - index
         self.pos_y = position[0] #i - index
         self.cell_width = cell_width
@@ -70,18 +79,20 @@ class Ghost:
             pacman_direction = pacman.direction_movement
             target_x = None
             target_y = None
+            
+            prediction_distance = 4
             if pacman_direction == 'D':
                 target_x = pacman.pos_x
-                target_y = pacman.pos_y + 4
+                target_y = pacman.pos_y + prediction_distance
             elif pacman_direction == 'L':
-                target_x = pacman.pos_x - 4
+                target_x = pacman.pos_x - prediction_distance
                 target_y = pacman.pos_y
             elif pacman_direction == 'R':
-                target_x = pacman.pos_x + 4
+                target_x = pacman.pos_x + prediction_distance
                 target_y = pacman.pos_y
             elif pacman_direction == 'U':
                 target_x = pacman.pos_x
-                target_y = pacman.pos_y - 4
+                target_y = pacman.pos_y - prediction_distance
             return [target_x, target_y]
         if self.name == "Inky":
             vector_x = blinky.pos_x - pacman.pos_x
@@ -193,7 +204,12 @@ class Ghost:
         if self.pos_x == target[0] and self.pos_y == target[1]:
             self.speed = 0
         else:
-            self.speed = 1.88 if self.mode == "Normal" else 1.5
+            # Используем базовую скорость в зависимости от сложности
+            if self.mode == "Normal":
+                self.speed = self.base_speed
+            else:
+                # В режиме Scared скорость немного меньше базовой
+                self.speed = max(1.0, self.base_speed * 0.8)
 
     def manage_position(self):
         if self.direction_movement == 'D':

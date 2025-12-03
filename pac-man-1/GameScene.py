@@ -1,4 +1,5 @@
 import pygame
+import random
 from Variables import *
 from MapGenarator import *
 from PacMan import *
@@ -11,9 +12,6 @@ from TileRenderer import render_map_with_tiles
 class GameScene:
     def __init__(self):
         self.screen = pygame.Surface((1280, 720))
-        # Увеличиваем карту: +50 вверх и +50 вниз = +100 к высоте
-        # Старая высота: 713, новая: 813
-        # Пропорционально ширина: 644 * (813/713) ≈ 735
         self.screen_map = pygame.Surface((735, 813))
         self.stay_here = True
         self.username = ""
@@ -27,6 +25,9 @@ class GameScene:
         self.score = 0
         self.score_high = 0
         self.lives = 3
+        self.difficulty = 1
+        self.game_over = False
+        self.difficulty = 1  # Уровень сложности (начинается с 1)
         self.start_sound = pygame.mixer.Sound('Static/Sounds/game_start.ogg')
         self.theme_index = None  # Будет установлена извне или получена из Config
         self.music_manager = None  # Будет установлен извне для проверки мута звуков
@@ -46,8 +47,37 @@ class GameScene:
         self.ghosts = self.init_ghosts()
         self.food = self.init_food()
 
-        self.score = 0
-        self.lives = 3
+        # При полном новом запуске (default map) сбрасываем счет, жизни, сложность
+        if map_type == "default":
+            self.score = 0
+            self.lives = 3
+            self.difficulty = 1
+            self.game_over = False
+
+        # Инициализируем спрайты пакмана и призраков для отображения во время задержки
+        # Вызываем update один раз без движения, чтобы загрузить спрайты
+        if self.pacman:
+            self.pacman.screen.fill(color_transparent)
+            sprite_path = f"Static/Sprites/Pacman/Pacman-{self.pacman.get_sprite()}"
+            try:
+                sprite = pygame.image.load(sprite_path)
+                self.pacman.screen.blit(sprite, (0, 0))
+            except:
+                pass
+        
+        for ghost in self.ghosts:
+            ghost.screen.fill(color_transparent)
+            sprite_path = None
+            if ghost.mode == "Normal":
+                sprite_path = f"Static/Sprites/{str(ghost.name)}/{str(ghost.name)}-{ghost.direction_movement}.png"
+            elif ghost.mode == "Scared":
+                sprite_path = f"Static/Sprites/Ghost-Scared.png"
+            if sprite_path:
+                try:
+                    sprite = pygame.image.load(sprite_path)
+                    ghost.screen.blit(sprite, (0, 0))
+                except:
+                    pass
 
         # Устанавливаем время начала задержки
         self.start_delay_start_time = pygame.time.get_ticks()
@@ -62,6 +92,18 @@ class GameScene:
     def update(self, user_input):
         self.ivent_timer += 1
         self.manage_user_input(user_input)
+        
+        # Если игра окончена - не обновляем логику, только перерисовываем
+        if self.game_over:
+            self.screen_map.fill(color_black)
+            self.screen.fill(color_black)
+            self.render_map()
+            self.render_food()
+            self.render_ghosts()
+            self.render_pacman()
+            self.render_ui()
+            self.screen.blit(self.screen_map, (0, 0))
+            return
         
         # Проверяем задержку перед стартом игры
         is_in_start_delay = False
@@ -78,6 +120,32 @@ class GameScene:
             self.pacman.update(user_input)
             self.update_gosts()
             self.game_logic()
+        elif is_in_start_delay:
+            # Во время задержки обновляем только спрайты без анимации и движения
+            # Показываем статичный спрайт пакмана (закрытый рот) без анимации
+            if self.pacman:
+                self.pacman.screen.fill(color_transparent)
+                # Используем статичный спрайт "Closed" без анимации
+                sprite_path = f"Static/Sprites/Pacman/Pacman-Closed.png"
+                try:
+                    sprite = pygame.image.load(sprite_path)
+                    self.pacman.screen.blit(sprite, (0, 0))
+                except:
+                    pass
+            # Обновляем спрайты призраков (статичные, без анимации)
+            for ghost in self.ghosts:
+                ghost.screen.fill(color_transparent)
+                sprite_path = None
+                if ghost.mode == "Normal":
+                    sprite_path = f"Static/Sprites/{str(ghost.name)}/{str(ghost.name)}-{ghost.direction_movement}.png"
+                elif ghost.mode == "Scared":
+                    sprite_path = f"Static/Sprites/Ghost-Scared.png"
+                if sprite_path:
+                    try:
+                        sprite = pygame.image.load(sprite_path)
+                        ghost.screen.blit(sprite, (0, 0))
+                    except:
+                        pass
         
         # Отрисовываем все элементы (даже во время задержки)
         self.screen_map.fill(color_black)
@@ -108,7 +176,15 @@ class GameScene:
             elif not self.music_manager:
                 win_sound.play()
             make_a_record(self.username, self.score)
+            # Сохраняем текущий счет и сложность перед перезапуском
+            saved_score = self.score
+            saved_difficulty = self.difficulty
+            # Увеличиваем сложность
+            self.difficulty += 1
             self.setup("generated")
+            # Восстанавливаем счет и устанавливаем новую сложность после перезапуска
+            self.score = saved_score
+            self.difficulty = saved_difficulty + 1
 
         self.update_food()
         self.check_gates()
@@ -153,6 +229,45 @@ class GameScene:
             else:
                 pygame.mixer.music.pause()
             self.ivent_timer = 0
+        if user_input[pygame.K_h]:
+            # Dev option: собрать все точки и перезапустить игру
+            self.collect_all_points()
+            self.ivent_timer = 0
+
+    def collect_all_points(self):
+        """Собирает все оставшиеся точки и перезапускает игру с сохранением счета"""
+        # Симулируем процесс сбора всех точек
+        # Подсчитываем очки за все оставшиеся точки
+        points_collected = len(self.food) * 10
+        # Добавляем очки к счету
+        self.score += points_collected
+        
+        # Очищаем все точки (симулируем их сбор)
+        self.food = []
+        
+        # Сохраняем текущий счет, жизни и сложность
+        saved_score = self.score
+        saved_lives = self.lives
+        saved_difficulty = self.difficulty
+        
+        # Увеличиваем сложность
+        self.difficulty += 1
+        
+        # Симулируем процесс победы - генерируем новую карту
+        win_sound = pygame.mixer.Sound('Static/Sounds/win.ogg')
+        if self.music_manager and not self.music_manager.is_sounds_muted():
+            self.music_manager.play_sound(win_sound)
+        elif not self.music_manager:
+            win_sound.play()
+        
+        # Генерируем новую карту (как при обычной победе)
+        make_a_record(self.username, self.score)
+        self.setup("generated")
+        
+        # Восстанавливаем счет, жизни и устанавливаем новую сложность
+        self.score = saved_score
+        self.lives = saved_lives
+        self.difficulty = saved_difficulty + 1
 
     def replay_on_current_map(self):
         width = self.screen_map.get_height() // len(self.map)
@@ -173,9 +288,8 @@ class GameScene:
         elif not self.music_manager:
             death_sound.play()
 
-        self.lives -= 1
-
         if self.lives > 0:
+            self.lives -= 1
             width = self.screen_map.get_height() // len(self.map)
             qw = width // 4 #quater width
             pacman_spawn = get_pacman_spawn(self.map)
@@ -185,7 +299,7 @@ class GameScene:
             self.start_delay_start_time = pygame.time.get_ticks()
         else:
             make_a_record(self.username, self.score)
-            self.setup("generated")
+            self.game_over = True
 
     def render_ui(self):
         small_font = pygame.font.Font('Static/Fonts/mini_pixel-7.ttf', 23)
@@ -238,6 +352,14 @@ class GameScene:
         middle = (self.screen.get_width() - self.screen_map.get_width()) // 2 + self.screen_map.get_width()
         if self.paused:
             self.screen.blit(paused_text, (middle - paused_text.get_width() // 2, 550))
+
+        # Отображаем Game Over, если игра окончена
+        if self.game_over:
+            game_over_text = regular_font_large.render("GAME OVER", True, color_red)
+            self.screen.blit(
+                game_over_text,
+                (middle - game_over_text.get_width() // 2, 550),
+            )
 
     def check_gates(self):
         gates_pos = get_gates_pos(self.map)
@@ -368,11 +490,43 @@ class GameScene:
         spawn = get_ghost_spawn(self.map)
         sp_i = spawn[0]
         sp_j = spawn[1]
-        blinky = Ghost("Blinky", width + 2 * qw, self.map, [sp_i, sp_j + 2], width)
-        pinky = Ghost("Pinky", width + 2 * qw, self.map, [sp_i, sp_j + 3], width)
-        inky = Ghost("Inky", width + 2 * qw, self.map, [sp_i + 1, sp_j + 2], width)
-        clyde = Ghost("Clyde", width + 2 * qw, self.map, [sp_i + 1, sp_j + 3], width)
-        return [blinky, pinky, inky, clyde]
+
+        # Текущая сложность
+        difficulty = getattr(self, "difficulty", 1)
+
+        # Количество призраков:
+        # начинается с 2, каждые 3 уровня сложности добавляется еще один
+        # 1-3 -> 2 призрака, 4-6 -> 3, 7-9 -> 4, 10-12 -> 5, и т.д.
+        num_ghosts = 2 + max(0, (difficulty - 1) // 3)
+
+        # Порядок чередования типов призраков
+        ghost_types_cycle = ["Blinky", "Pinky", "Inky", "Clyde"]
+        # Базовые позиции относительно spawn для первых четырех призраков
+        # Собираем все клетки внутри комнаты призраков вокруг точки spawn
+        house_cells = []
+        for i in range(sp_i - 2, sp_i + 3):
+            # Сканируем комнату шире вправо (еще +3 клетки)
+            for j in range(sp_j - 3, sp_j + 8):
+                if 0 <= i < len(self.map) and 0 <= j < len(self.map[0]):
+                    if self.map[i][j] in ["U", "g"]:
+                        house_cells.append((i, j))
+
+        ghosts = []
+        for idx in range(num_ghosts):
+            ghost_name = ghost_types_cycle[idx % len(ghost_types_cycle)]
+            # Выбираем случайную свободную позицию внутри комнаты
+            pos_i, pos_j = random.choice(house_cells)
+            ghost = Ghost(
+                ghost_name,
+                width + 2 * qw,
+                self.map,
+                [pos_i, pos_j],
+                width,
+                difficulty,
+            )
+            ghosts.append(ghost)
+
+        return ghosts
 
 def get_render_lines(map, i, j):
     result = [False, False, False, False] #up - right - down - left

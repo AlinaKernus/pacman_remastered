@@ -53,14 +53,18 @@ class Singleplayer(Page):
             "time": (1213, 400),
             "lives": (1213, 500),
             "difficulty": (1213, 600),
-            "controls": (1213, 700)
+            "controls": (1213, 700),
+            "dev_options": (1213, 800),
+            "collect_points": (1213, 850)
         }
         self.label_texts = {
             "score": "Score",
             "time": "Time",
             "lives": "Lives",
             "difficulty": "Difficulty",
-            "controls": "Controls"
+            "controls": "Controls",
+            "dev_options": "Dev options",
+            "collect_points": "Collect all points: H"
         }
 
     def _update_game_position(self, window_size):
@@ -85,7 +89,7 @@ class Singleplayer(Page):
             game_scale_w = game_bg_rect.width / game_original_w
             game_scale_h = game_bg_rect.height / game_original_h
             # Используем минимум, чтобы игра влезала, добавляем пространство между рамкой и игрой
-            game_scale = min(game_scale_w, game_scale_h) * 0.94  # 94% для пространства между рамкой и игрой
+            game_scale = min(game_scale_w, game_scale_h) * 1.05  # 94% для пространства между рамкой и игрой
             
             scaled_game_w = int(game_original_w * game_scale)
             scaled_game_h = int(game_original_h * game_scale)
@@ -131,7 +135,11 @@ class Singleplayer(Page):
             time_value = f"{minutes:02d}:{seconds:02d}"
         else:
             time_value = "00:00"
-        difficulty_value = "1"
+        # Получаем difficulty из игры
+        if self.game_scene:
+            difficulty_value = str(self.game_scene.difficulty)
+        else:
+            difficulty_value = "1"
 
         controls_value = "W,A,S,D"
         
@@ -146,7 +154,7 @@ class Singleplayer(Page):
         color = (255, 255, 0)
         spacing = int(80 * scale_w)
 
-        for key in ["score", "time", "lives", "difficulty", "controls"]:
+        for key in ["score", "time", "lives", "difficulty", "controls", "dev_options", "collect_points"]:
             base_pos = self.label_positions.get(key)
             if not base_pos:
                 continue
@@ -154,14 +162,20 @@ class Singleplayer(Page):
             draw_x = int(base_pos[0] * scale_w)
             draw_y = int(base_pos[1] * scale_h)
 
-            label_text = f"{self.label_texts[key]}:"
-            label_surface = font.render(label_text, True, color)
-            surface.blit(label_surface, (draw_x, draw_y))
+            # Для dev_options и collect_points не добавляем двоеточие и значение
+            if key in ["dev_options", "collect_points"]:
+                label_text = self.label_texts[key]
+                label_surface = font.render(label_text, True, color)
+                surface.blit(label_surface, (draw_x, draw_y))
+            else:
+                label_text = f"{self.label_texts[key]}:"
+                label_surface = font.render(label_text, True, color)
+                surface.blit(label_surface, (draw_x, draw_y))
 
-            value_surface = font.render(values[key], True, color)
-            value_x = draw_x + 200
-            value_y = draw_y + (label_surface.get_height() - value_surface.get_height()) // 2
-            surface.blit(value_surface, (value_x, value_y))
+                value_surface = font.render(values[key], True, color)
+                value_x = draw_x + 200
+                value_y = draw_y + (label_surface.get_height() - value_surface.get_height()) // 2
+                surface.blit(value_surface, (value_x, value_y))
 
     def run(self, surface):
         clock = pygame.time.Clock()
@@ -277,6 +291,36 @@ class Singleplayer(Page):
                 surface.blit(scaled_game, self.game_rect)
             
             self._draw_hud(surface)
+
+            # Если игра окончена, рисуем надпись GAME OVER над окном игры
+            if self.game_scene and getattr(self.game_scene, "game_over", False):
+                # Используем основной шрифт (Jersey) красного цвета
+                window_size = surface.get_size()
+                scale_w = window_size[0] / Config.BASE_WIDTH
+                scale_h = window_size[1] / Config.BASE_HEIGHT
+                text_scale = min(scale_w, scale_h)
+
+                font_size = max(32, int(self.font_size_base * text_scale))
+                try:
+                    if self.font_path:
+                        go_font = pygame.font.Font(self.font_path, font_size)
+                    else:
+                        go_font = pygame.font.Font(None, font_size)
+                except Exception:
+                    go_font = pygame.font.SysFont('arial', font_size)
+
+                game_over_text = go_font.render("GAME OVER", True, (255, 0, 0))
+
+                if self.game_rect:
+                    # По центру окна игры по горизонтали и вертикали
+                    go_x = self.game_rect.centerx - game_over_text.get_width() // 2
+                    go_y = self.game_rect.centery - game_over_text.get_height() // 2
+                else:
+                    # Фоллбек: центрируем по всему окну
+                    go_x = (window_size[0] - game_over_text.get_width()) // 2
+                    go_y = (window_size[1] - game_over_text.get_height()) // 2
+
+                surface.blit(game_over_text, (go_x, go_y))
 
             if self.back_but.draw(surface):
                 # Останавливаем все звуки игры перед выходом
