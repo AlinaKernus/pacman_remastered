@@ -28,8 +28,6 @@ class Settings(Page):
         # Инициализируем слайдер с текущей громкостью
         self.slider.value = music_manager.get_music_volume()
 
-        self.main_but = Button(434, 53, image_cache_manager.main_img, image_cache_manager.main_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
-        self.lead_but = Button(1010, 53, image_cache_manager.lead_img, image_cache_manager.lead_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.back_but = Button(1350, 913, image_cache_manager.back_img, image_cache_manager.back_hov_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.col1 = Button(440, 567, image_cache_manager.col1_img, image_cache_manager.col1_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
         self.col2 = Button(540, 567, image_cache_manager.col2_img, image_cache_manager.col2_img, Config.BASE_WIDTH, Config.BASE_HEIGHT)
@@ -40,7 +38,7 @@ class Settings(Page):
         self.widgets = [
             self.deco1, self.deco2, self.name, self.volume, self.theme,
             self.col1, self.col2, self.col3, self.col4, self.col5, self.slider,
-            self.main_but, self.lead_but, self.back_but
+            self.back_but
         ]
         
         # Поле ввода username
@@ -161,16 +159,6 @@ class Settings(Page):
             # Отрисовка поля ввода username
             self._draw_username_input(surface)
 
-            if self.main_but.draw(surface):
-                # Сохраняем username перед выходом
-                if self.username:
-                    settings_manager.set_setting("username", self.username)
-                return "settings"
-            if self.lead_but.draw(surface):
-                # Сохраняем username перед выходом
-                if self.username:
-                    settings_manager.set_setting("username", self.username)
-                return "leaderboard"
             if self.back_but.draw(surface):
                 # Сохраняем username перед выходом
                 if self.username:

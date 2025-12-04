@@ -53,15 +53,12 @@ if __name__ == "__main__":
                 router_manager.leaderboard_page.on_resize(screen.get_size())
                 router_manager.map_choice_page.on_resize(screen.get_size())
                 router_manager.singleplayer_page.on_resize(screen.get_size())
-                router_manager.multiplayer_page.on_resize(screen.get_size())
 
         # draw current page by delegating to its run loop (which also handles resize internally)
         if router_manager.current_page == "menu":
             router_manager.current_page = router_manager.menu_page.run(screen)
         elif router_manager.current_page == "map_choice":
             router_manager.current_page = router_manager.map_choice_page.run(screen)
-        elif router_manager.current_page == "multi_player":
-            router_manager.current_page = router_manager.multiplayer_page.run(screen)
         elif router_manager.current_page == "settings":
             router_manager.current_page = router_manager.settings_page.run(screen)
         elif router_manager.current_page == "leaderboard":

@@ -54,8 +54,8 @@ class Singleplayer(Page):
             "lives": (1213, 500),
             "difficulty": (1213, 600),
             "controls": (1213, 700),
-            "dev_options": (1213, 800),
-            "collect_points": (1213, 850)
+            # "dev_options": (1213, 800),
+            # "collect_points": (1213, 850)
         }
         self.label_texts = {
             "score": "Score",
@@ -63,8 +63,8 @@ class Singleplayer(Page):
             "lives": "Lives",
             "difficulty": "Difficulty",
             "controls": "Controls",
-            "dev_options": "Dev options",
-            "collect_points": "Collect all points: H"
+            # "dev_options": "Dev options",
+            # "collect_points": "Collect all points: H"
         }
 
     def _update_game_position(self, window_size):
