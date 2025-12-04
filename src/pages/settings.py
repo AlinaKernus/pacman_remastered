@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 from src.pages._base import Page
 from src.widgets._base import Widget
 from src.widgets.button import Button
@@ -7,6 +8,11 @@ from src.widgets.slider import Slider
 from src.utils.image import image_cache_manager
 from src.utils.config import Config
 from src.utils.music_manager import music_manager
+from src.utils.settings_manager import settings_manager
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+ASSETS_DIR = os.path.join(BASE_DIR, "Assets")
+FONT_PATH = os.path.join(ASSETS_DIR, "fonts", "Jersey_10", "Jersey10-Regular.ttf")
 
 class Settings(Page):
     def __init__(self, image, base_w, base_h):
@@ -36,14 +42,75 @@ class Settings(Page):
             self.col1, self.col2, self.col3, self.col4, self.col5, self.slider,
             self.main_but, self.lead_but, self.back_but
         ]
+        
+        # Поле ввода username
+        self.username = settings_manager.get_setting("username", "")  # Автоматически сгенерируется если пусто
+        self.username_input_active = False
+        self.username_input_rect = None
+        self.font_path = FONT_PATH if os.path.isfile(FONT_PATH) else None
 
 
+    def _init_font(self, size=36):
+        """Инициализация шрифта"""
+        try:
+            if self.font_path:
+                return pygame.font.Font(self.font_path, size)
+            else:
+                return pygame.font.Font(None, size)
+        except Exception:
+            return pygame.font.SysFont('arial', size)
+    
+    def _draw_username_input(self, surface):
+        """Отрисовка поля ввода username"""
+        window_size = surface.get_size()
+        scale_w = window_size[0] / Config.BASE_WIDTH
+        scale_h = window_size[1] / Config.BASE_HEIGHT
+        
+        font = self._init_font(int(36 * min(scale_w, scale_h)))
+        
+        # Позиция рядом с "Username" (name widget)
+        if self.name.rect:
+            input_x = int(self.name.rect.right + 50 * scale_w)
+            input_y = int(self.name.rect.y)
+        else:
+            input_x = int(500 * scale_w)
+            input_y = int(275 * scale_h)
+        
+        input_width = int(300 * scale_w)
+        input_height = int(40 * scale_h)
+        
+        # Прямоугольник для поля ввода
+        input_rect = pygame.Rect(input_x, input_y, input_width, input_height)
+        self.username_input_rect = input_rect
+        
+        # Цвета
+        bg_color = (40, 40, 40)
+        border_color = (255, 255, 255) if self.username_input_active else (255, 255, 0)
+        border_width = 3 if self.username_input_active else 2
+        text_color = (255, 255, 255) if self.username_input_active else (255, 255, 0)
+        
+        # Рисуем фон и рамку
+        pygame.draw.rect(surface, bg_color, input_rect)
+        pygame.draw.rect(surface, border_color, input_rect, border_width)
+        
+        # Текст в поле ввода
+        display_text = self.username + ("|" if self.username_input_active else "")
+        text_surface = font.render(display_text, True, text_color)
+        
+        # Центрируем текст в поле ввода
+        text_x = input_x + 10
+        text_y = input_y + (input_height - text_surface.get_height()) // 2
+        surface.blit(text_surface, (text_x, text_y))
+    
     def run(self, surface):
         clock = pygame.time.Clock()
         self.on_resize(surface.get_size())
         
         # Обновляем слайдер с текущей громкостью при входе на страницу
         self.slider.value = music_manager.get_music_volume()
+        
+        # Загружаем username из настроек (автоматически сгенерируется если пусто)
+        self.username = settings_manager.get_setting("username", "")
 
         while True:
             for event in pygame.event.get():
@@ -55,6 +122,28 @@ class Settings(Page):
                     surface = pygame.display.set_mode((event.w, event.h),
                                                      pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE)
                     self.on_resize(surface.get_size())
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Обработка кликов по полю ввода username
+                    if event.button == 1:  # Левая кнопка мыши
+                        mouse_pos = event.pos
+                        if self.username_input_rect and self.username_input_rect.collidepoint(mouse_pos):
+                            self.username_input_active = True
+                        else:
+                            # Клик вне поля ввода - сохраняем и убираем фокус
+                            if self.username_input_active:
+                                settings_manager.set_setting("username", self.username)
+                            self.username_input_active = False
+                elif event.type == pygame.KEYDOWN:
+                    if self.username_input_active:
+                        if event.key == pygame.K_RETURN:
+                            # Сохраняем и убираем фокус
+                            settings_manager.set_setting("username", self.username)
+                            self.username_input_active = False
+                        elif event.key == pygame.K_BACKSPACE:
+                            self.username = self.username[:-1]
+                        elif event.unicode and event.unicode.isprintable():
+                            if len(self.username) < 20:  # Максимальная длина имени
+                                self.username += event.unicode
 
             # Обновляем громкость музыки из слайдера
             music_manager.set_music_volume(self.slider.value)
@@ -68,12 +157,24 @@ class Settings(Page):
                 w.draw(surface)
 
             self.slider.draw(surface)
+            
+            # Отрисовка поля ввода username
+            self._draw_username_input(surface)
 
             if self.main_but.draw(surface):
+                # Сохраняем username перед выходом
+                if self.username:
+                    settings_manager.set_setting("username", self.username)
                 return "settings"
             if self.lead_but.draw(surface):
+                # Сохраняем username перед выходом
+                if self.username:
+                    settings_manager.set_setting("username", self.username)
                 return "leaderboard"
             if self.back_but.draw(surface):
+                # Сохраняем username перед выходом
+                if self.username:
+                    settings_manager.set_setting("username", self.username)
                 return "menu"
             if self.col1.draw(surface):
                 self.change_theme(1)
