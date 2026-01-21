@@ -32,7 +32,10 @@ if __name__ == "__main__":
 
     # music - используем трек из pac-man-1
     mixer.init()
-    mixer.music.load("pac-man-1/Static/Sounds/background.ogg")
+    # Get correct path for exe or dev
+    from src.utils.path_helper import get_resource_path
+    music_path = get_resource_path("pac-man-1/Static/Sounds/background.ogg")
+    mixer.music.load(music_path)
     # Громкость уже установлена из настроек в music_manager
     mixer.music.play(loops=-1)
 

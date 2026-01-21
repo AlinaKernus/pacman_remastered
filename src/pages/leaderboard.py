@@ -12,7 +12,8 @@ from src.utils.image import image_cache_manager
 from src.utils.config import Config
 from src.utils.music_manager import music_manager
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+from src.utils.path_helper import get_base_dir
+BASE_DIR = get_base_dir()
 ASSETS_DIR = os.path.join(BASE_DIR, "Assets")
 FONT_PATH = os.path.join(ASSETS_DIR, "fonts", "Jersey_10", "Jersey10-Regular.ttf")
 

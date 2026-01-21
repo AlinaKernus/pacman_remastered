@@ -3,8 +3,20 @@
 """
 import json
 import os
+import sys
 
-SETTINGS_FILE = "settings.json"
+# For exe: save settings in user directory, not in temp folder
+if getattr(sys, 'frozen', False):
+    # Running in exe - save to user's AppData or home directory
+    if sys.platform == 'win32':
+        settings_dir = os.path.join(os.environ.get('APPDATA', ''), 'PacmanRemastered')
+    else:
+        settings_dir = os.path.join(os.path.expanduser('~'), '.pacman_remastered')
+    os.makedirs(settings_dir, exist_ok=True)
+    SETTINGS_FILE = os.path.join(settings_dir, "settings.json")
+else:
+    # Running in dev - save in project root
+    SETTINGS_FILE = "settings.json"
 
 class SettingsManager:
     """Класс для управления сохранением и загрузкой настроек"""

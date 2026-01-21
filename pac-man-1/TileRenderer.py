@@ -19,8 +19,18 @@ except ImportError:
     class Config:
         CURRENT_THEME = 1
 
+def get_tiles_dir():
+    """Get the tiles directory path, works in both dev and exe"""
+    if getattr(sys, 'frozen', False):
+        # Running in exe - use sys._MEIPASS
+        base_dir = sys._MEIPASS
+    else:
+        # Running in dev - go up from pac-man-1 to project root
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_dir, "res", "tiles")
+
 # Путь к тайлам
-TILES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "res", "tiles")
+TILES_DIR = get_tiles_dir()
 
 # Кэш загруженных тайлов
 _tile_cache = {}
@@ -67,7 +77,9 @@ def load_tile(tile_name):
     if tile_name in _tile_cache:
         return _tile_cache[tile_name]
     
-    tile_path = os.path.join(TILES_DIR, f"{tile_name}.gif")
+    # Get tiles directory (may change in exe)
+    tiles_dir = get_tiles_dir()
+    tile_path = os.path.join(tiles_dir, f"{tile_name}.gif")
     if os.path.exists(tile_path):
         tile = pygame.image.load(tile_path).convert_alpha()
         _tile_cache[tile_name] = tile

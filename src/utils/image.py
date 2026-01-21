@@ -1,4 +1,6 @@
 import pygame
+import os
+from src.utils.path_helper import get_resource_path
 
 _image_cache = {}
 
@@ -6,7 +8,9 @@ def load_image(path):
     """Load image once and cache it (convert_alpha applied)."""
     global _image_cache
     if path not in _image_cache:
-        _image_cache[path] = pygame.image.load(path).convert_alpha()
+        # Use resource path helper for exe compatibility
+        full_path = get_resource_path(path)
+        _image_cache[path] = pygame.image.load(full_path).convert_alpha()
     return _image_cache[path]
 
 

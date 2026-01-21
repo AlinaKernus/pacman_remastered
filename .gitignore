@@ -43,6 +43,10 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# PyInstaller
+*.spec.bak
+*.spec~
+
 # Settings (может содержать чувствительные данные)
 # settings.json - раскомментируйте если не хотите коммитить настройки
 

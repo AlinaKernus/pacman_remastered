@@ -1,13 +1,18 @@
 import pygame
 import sys
 import os
+import requests
 from src.pages._base import Page
 from src.widgets._base import Widget
 from src.widgets.button import Button
 from src.utils.image import image_cache_manager
 from src.utils.config import Config
+from src.utils.settings_manager import settings_manager
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# Use path_helper for correct paths in both dev and exe
+from src.utils.path_helper import get_base_dir, get_resource_path
+
+BASE_DIR = get_base_dir()
 ASSETS_DIR = os.path.join(BASE_DIR, "Assets")
 FONT_PATH = os.path.join(ASSETS_DIR, "fonts", "Jersey_10", "Jersey10-Regular.ttf")
 PACMAN1_DIR = os.path.join(BASE_DIR, "pac-man-1")
@@ -47,6 +52,14 @@ class Singleplayer(Page):
         self.font_size_base = 64
         self.font = None  # Будет инициализирован при первом запуске
         self.font_path = FONT_PATH if os.path.isfile(FONT_PATH) else None
+        
+        # Отслеживание изменений для отправки счета
+        self.last_game_over_state = False
+        self.last_difficulty = 1
+        self.score_sent_for_game_over = False  # Чтобы не отправлять несколько раз
+        
+        # API URL
+        self.api_url = "http://localhost:3000"
         # Позиции центрированы по вертикали (высота экрана 1080, размещаем от 300 до 800)
         self.label_positions = {
             "score": (1213, 300),
@@ -176,6 +189,37 @@ class Singleplayer(Page):
                 value_x = draw_x + 200
                 value_y = draw_y + (label_surface.get_height() - value_surface.get_height()) // 2
                 surface.blit(value_surface, (value_x, value_y))
+    
+    def save_score_to_leaderboard(self, username, score):
+        """Save score to leaderboard via PATCH /leaderboard/save"""
+        try:
+            url = f"{self.api_url}/leaderboard/save"
+            payload = {
+                "username": username,
+                "score": score
+            }
+            print(f"[Singleplayer] PATCH {url}")
+            print(f"[Singleplayer] Request body: {payload}")
+            
+            response = requests.patch(url, json=payload, timeout=5)
+            
+            print(f"[Singleplayer] Response status: {response.status_code}")
+            # 200 and 201 are successful statuses
+            if response.status_code in [200, 201]:
+                data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
+                print(f"[Singleplayer] Success response: {data}")
+                return True
+            else:
+                error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
+                error_msg = error_data.get('message', f'Error {response.status_code}')
+                print(f"[Singleplayer] Error {response.status_code}: {error_msg}")
+                return False
+        except requests.exceptions.RequestException as e:
+            print(f"[Singleplayer] Request exception: {str(e)}")
+            return False
+        except Exception as e:
+            print(f"[Singleplayer] Exception: {str(e)}")
+            return False
 
     def run(self, surface):
         clock = pygame.time.Clock()
@@ -196,12 +240,18 @@ class Singleplayer(Page):
             old_cwd = os.getcwd()
             os.chdir(PACMAN1_DIR)
             self.game_scene = GameScene()
-            self.game_scene.username = "Player"  # Можно сделать настраиваемым
+            username = settings_manager.get_setting("username", "Player")
+            self.game_scene.username = username
             # Устанавливаем тему из Config
             self.game_scene.theme_index = Config.CURRENT_THEME
             # Устанавливаем music_manager для проверки мута звуков
             self.game_scene.music_manager = music_manager
             self.game_scene.setup("generated")  # Запускаем сгенерированную карту
+            
+            # Инициализируем отслеживание после setup
+            self.last_game_over_state = False
+            self.last_difficulty = getattr(self.game_scene, 'difficulty', 1)
+            self.score_sent_for_game_over = False
             
             # Устанавливаем громкость звуков через music_manager
             # Обновляем громкость всех звуков в GameScene
@@ -250,6 +300,10 @@ class Singleplayer(Page):
                 if self.game_scene.theme_index != Config.CURRENT_THEME:
                     self.game_scene.theme_index = Config.CURRENT_THEME
                 
+                # Отслеживаем изменения difficulty перед обновлением
+                current_difficulty = getattr(self.game_scene, 'difficulty', 1)
+                difficulty_increased = current_difficulty > self.last_difficulty
+                
                 # Временно меняем рабочую директорию для обновления GameScene
                 old_cwd = os.getcwd()
                 os.chdir(PACMAN1_DIR)
@@ -258,6 +312,31 @@ class Singleplayer(Page):
                 os.chdir(old_cwd)
                 # Используем screen_map из GameScene для отрисовки игрового поля
                 self.game_surface = self.game_scene.screen_map
+                
+                # Проверяем game over и отправляем счет
+                current_game_over = getattr(self.game_scene, 'game_over', False)
+                if current_game_over and not self.last_game_over_state and not self.score_sent_for_game_over:
+                    # Игрок только что проиграл - отправляем счет
+                    username = settings_manager.get_setting("username", "Player")
+                    score = getattr(self.game_scene, 'score', 0)
+                    print(f"[Singleplayer] Game over detected, saving score: {score} for {username}")
+                    self.save_score_to_leaderboard(username, score)
+                    self.score_sent_for_game_over = True
+                
+                # Проверяем увеличение difficulty и отправляем счет
+                if difficulty_increased:
+                    username = settings_manager.get_setting("username", "Player")
+                    score = getattr(self.game_scene, 'score', 0)
+                    print(f"[Singleplayer] Difficulty increased to {current_difficulty}, saving score: {score} for {username}")
+                    self.save_score_to_leaderboard(username, score)
+                
+                # Обновляем отслеживаемые значения
+                self.last_game_over_state = current_game_over
+                self.last_difficulty = getattr(self.game_scene, 'difficulty', 1)
+                
+                # Сбрасываем флаг отправки при новом старте игры
+                if not current_game_over and self.score_sent_for_game_over:
+                    self.score_sent_for_game_over = False
             
             # Проверяем состояние игры (game over)
             # Автоматическое перенаправление закомментировано

@@ -10,7 +10,8 @@ from src.utils.config import Config
 from src.utils.music_manager import music_manager
 from src.utils.settings_manager import settings_manager
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+from src.utils.path_helper import get_base_dir
+BASE_DIR = get_base_dir()
 ASSETS_DIR = os.path.join(BASE_DIR, "Assets")
 FONT_PATH = os.path.join(ASSETS_DIR, "fonts", "Jersey_10", "Jersey10-Regular.ttf")
 
@@ -64,39 +65,52 @@ class Settings(Page):
         scale_w = window_size[0] / Config.BASE_WIDTH
         scale_h = window_size[1] / Config.BASE_HEIGHT
         
-        font = self._init_font(int(36 * min(scale_w, scale_h)))
-        
         # Позиция рядом с "Username" (name widget)
         if self.name.rect:
-            input_x = int(self.name.rect.right + 50 * scale_w)
-            input_y = int(self.name.rect.y)
+            input_x = int(self.name.rect.right + 85 * scale_w)  # Отступ слева 100 пикселей
+            input_y = int(self.name.rect.y - 5)
         else:
             input_x = int(500 * scale_w)
             input_y = int(275 * scale_h)
         
-        input_width = int(300 * scale_w)
-        input_height = int(40 * scale_h)
+        input_width = int(300 * scale_w + 200)  # Увеличено на 200 пикселей
+        input_height = int(60 * scale_h + 10)  # Увеличено еще на 20 пикселей
         
         # Прямоугольник для поля ввода
         input_rect = pygame.Rect(input_x, input_y, input_width, input_height)
         self.username_input_rect = input_rect
         
-        # Цвета
-        bg_color = (40, 40, 40)
-        border_color = (255, 255, 255) if self.username_input_active else (255, 255, 0)
-        border_width = 3 if self.username_input_active else 2
+        # Получаем цвет фона страницы из base_img (с учетом темы)
+        try:
+            # Получаем цвет из фонового изображения в точке, где находится инпут
+            # Конвертируем координаты в координаты базового изображения
+            base_x = int((input_x / scale_w) * (self.base_img.get_width() / Config.BASE_WIDTH))
+            base_y = int((input_y / scale_h) * (self.base_img.get_height() / Config.BASE_HEIGHT))
+            # Ограничиваем координаты размерами изображения
+            base_x = max(0, min(base_x, self.base_img.get_width() - 1))
+            base_y = max(0, min(base_y, self.base_img.get_height() - 1))
+            bg_color = self.base_img.get_at((base_x, base_y))[:3]  # Берем только RGB, без alpha
+        except:
+            # Fallback если не удалось получить цвет
+            bg_color = (40, 40, 40)
+        
+        # Обводка красная
+        border_color = (255, 0, 0)
+        border_width = 2
         text_color = (255, 255, 255) if self.username_input_active else (255, 255, 0)
         
         # Рисуем фон и рамку
         pygame.draw.rect(surface, bg_color, input_rect)
         pygame.draw.rect(surface, border_color, input_rect, border_width)
         
-        # Текст в поле ввода
+        # Текст в поле ввода (шрифт увеличен в 1.5 раза)
         display_text = self.username + ("|" if self.username_input_active else "")
+        font_size = int(54 * min(scale_w, scale_h))  # 36 * 1.5 = 54
+        font = self._init_font(font_size)
         text_surface = font.render(display_text, True, text_color)
         
         # Центрируем текст в поле ввода
-        text_x = input_x + 10
+        text_x = input_x + int(20 * scale_w)  # Отступ слева 20 пикселей для текста
         text_y = input_y + (input_height - text_surface.get_height()) // 2
         surface.blit(text_surface, (text_x, text_y))
     
